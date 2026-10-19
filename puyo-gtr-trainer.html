@@ -202,7 +202,7 @@ const KEYTYPE={};TYPE_IDS.forEach(t=>TYPES[t].keys.forEach(k=>{KEYTYPE[k]=t;}));
 
 const NOTE={
   'm1':'初手AAは1・2列目に横置き。',
-  'm2-basic':'ABはBを下にして3列目に縦置き���',
+  'm2-basic':'ABはBを下にして3列目に縦置き。',
   'm2-BB':'3手目がBBのときの例外。ABは2列目にB下で縦置きし、BBを1列目に縦置きしてGTR完成。',
   'm3-AA':'AAは4・5列目に横置き。',
   'm3-AB':'ABはA下で4列目に縦置き。2列目B下だと折返しと土台の両方でBが必要になり不安定。',
@@ -230,7 +230,7 @@ const NOTE={
   'abac-m3-DD':'DDは5・6列目に横置き。(4手目に2Y型が狙える色が見える場合は4・5列目)',
   'aabc-m1':'初手AAは1・2列目に横置き。',
   'aabc-m2-AA':'3手目がAAなら、2手目BCは2・3列目に横置き(左右どちらでもOK)。',
-  'aabc-m2-AB':'3手目がABなら、2手目はBを上にして4列目に縦���き。',
+  'aabc-m2-AB':'3手目がABなら、2手目はBを上にして4列目に縦置き。',
   'aabc-m2-BD':'3手目がBDなら、2手目はBを右にして3・4列目に横置き。',
   'aabc-m2-BC':'3手目がBCなら、2手目は3・4列目に横置き(向きはどちらでもOK)。',
   'aabc-m3-AA':'AAは2・3列目に横置き。',
@@ -248,8 +248,8 @@ function emptyBoard(){return Array.from({length:COLS},()=>[]);}
 function clone(b){return b.map(c=>c.slice());}
 function apply(board,pl){
   const b=clone(board);
-  if(pl.k==='v'){b[pl.col].push(pl.lo,pl.hi);} 
-  else{b[pl.col].push(pl.l);b[pl.col+1].push(pl.r);} 
+  if(pl.k==='v'){b[pl.col].push(pl.lo,pl.hi);}
+  else{b[pl.col].push(pl.l);b[pl.col+1].push(pl.r);}
   return b;
 }
 function sig(b){return b.map(c=>c.join('')).join('|');}
@@ -532,21 +532,20 @@ function pzPrep(form){
   return null;
 }
 
-/*UI*/
 /* ===== UI ===== */
 const app=document.getElementById('app');
 let sess=null,ps=null;
 function mk(params){return {params,q:buildQ(params),chosen:null,ok:null,ms:0,t0:0};}
 function boardHTML(b,cls,base){
-  let h='<div class="board '+(cls||'')+''>;
+  let h='<div class="board '+(cls||'')+'">';
   for(let r=ROWS-1;r>=0;r--)for(let c=0;c<COLS;c++){
     const v=b[c][r];
     const gh=base&&v&&r>=base[c].length?' ghost':'';
-    h+=v?'<div class="cell puyo c-'+v+gh+'>'+CN[v]+'</div>':'<div class="cell slot"></div>';
+    h+=v?'<div class="cell puyo c-'+v+gh+'">'+CN[v]+'</div>':'<div class="cell slot"></div>';
   }
   return h+'</div>';
 }
-function pairHTML(p){return '<div class="pair">'+p.map(v=>'<div class="puyo c-'+v+'">'+CN[v]+'</div>').join('')+'</div>';} 
+function pairHTML(p){return '<div class="pair">'+p.map(v=>'<div class="puyo c-'+v+'">'+CN[v]+'</div>').join('')+'</div>';}
 function pct(a,b){return b?Math.round(a/b*100):0;}
 function typeSummary(){
   const st=store.set;
@@ -654,7 +653,6 @@ function renderPuzzleHome(){
 }
 
 /* ----- 組み立てモードの進行 ----- */
-function pzNormO(){}
 const DIRN=['上','右','下','左'];
 function startPuzzle(){
   const ids=enabledForms();if(!ids.length)return;
@@ -681,7 +679,7 @@ function pzOnTrack(){
   return junk<=allowed;
 }
 /* 目標形の各セルが埋まっていればOK(その上のゴミぷよは気にしない) */
-function pzMatches(){return ps.req.every((c,i)=>ps.board[i].length>=c.length&&ps.board[i].slice(0,c.length).join('')===c);} 
+function pzMatches(){return ps.req.every((c,i)=>ps.board[i].length>=c.length&&ps.board[i].slice(0,c.length).join('')===c);}
 function pzGhostOn(){
   if(ps.done||ps.qi>=ps.q.length)return true;
   if(ps.gManual!==null)return ps.gManual;
@@ -703,16 +701,16 @@ function pzBoardHTML(){
   for(let r=rows-1;r>=0;r--)for(let c=0;c<COLS;c++){
     if(r>=PZR){
       const k=cur[c+','+r];
-      if(k){const id=ps.map[k.L];h+='<div class="cell puyo c-'+id+(k.axis?' axis':'')+'>'+CN[ps.map[k.L]]+'</div>';} 
+      if(k){const id=ps.map[k.L];h+='<div class="cell puyo c-'+id+(k.axis?' axis':'')+'">'+CN[id]+'</div>';}
       else h+='<div class="cell air"></div>';
       continue;
     }
     const v=ps.board[c][r];
     const isHint=ps.hint&&ps.hint.cells.some(x=>x[0]===c&&x[1]===r);
     const hint=isHint?' hint':'';
-    if(v){const id=ps.map[v];h+='<div class="cell puyo c-'+id+'>'+CN[id]+'</div>';} 
-    else if(r<H[c]&&(ghost||isHint)){const id=ps.map[ps.req[c][r]];h+='<div class="cell puyo ghost c-'+id+hint+'>'+CN[id]+'</div>';} 
-    else if(ghost&&ps.opt&&ps.opt.c===c&&ps.opt.r===r){const id=ps.map[ps.opt.ch];h+='<div class="cell puyo ghost spare c-'+id+'>'+CN[id]+'</div>';} 
+    if(v){const id=ps.map[v];h+='<div class="cell puyo c-'+id+'">'+CN[id]+'</div>';}
+    else if(r<H[c]&&(ghost||isHint)){const id=ps.map[ps.req[c][r]];h+='<div class="cell puyo ghost c-'+id+hint+'">'+CN[id]+'</div>';}
+    else if(ghost&&ps.opt&&ps.opt.c===c&&ps.opt.r===r){const id=ps.map[ps.opt.ch];h+='<div class="cell puyo ghost spare c-'+id+'">'+CN[id]+'</div>';}
     else h+='<div class="cell slot'+hint+'"></div>';
   }
   return h+'</div>';
@@ -721,14 +719,14 @@ function renderPuzzle(){
   const total=ps.q.length,playing=!ps.done,hasPiece=playing&&ps.qi<total;
   const junkN=2*total-ps.req.reduce((a,c)=>a+c.length,0);
   const junkNote=junkN>0?'最後のツモは片方がゴミぷよ(その上など、目標の外ならどこに置いてもOK)。':'';
-  const pu=L=>'<div class="puyo c-'+ps.map[L]+'>'+CN[ps.map[L]]+'</div>';
+  const pu=L=>'<div class="puyo c-'+ps.map[L]+'">'+CN[ps.map[L]]+'</div>';
   const vp=pc=>'<div class="pairv">'+(pc?pu(pc[1])+pu(pc[0]):'')+'</div>';
   let html=
     '<div class="top"><span>'+ps.form.name+'</span><span>'+ps.qi+' / '+total+'手</span><button class="quit" data-act="home">やめる</button></div>'+
     '<div class="bar"><i style="width:'+(ps.qi/total*100)+'%"></i></div>';
   let cols='';
-  if(hasPiece){for(let c=0;c<6;c++)cols+='<button data-act="pcol" data-c="'+c+'" aria-label="'+(c+1)+'列目に落とす'></button>';} 
-  const side=hasPiece?'<div class="nextp"><div><small>ネク</small>'+vp(ps.q[ps.qi+1])+'</div><div class="nn"><small>ネクネク</small>'+vp(ps.q[ps.qi+2])+'</div></div>':'')
+  if(hasPiece){for(let c=0;c<6;c++)cols+='<button data-act="pcol" data-c="'+c+'" aria-label="'+(c+1)+'列目に落とす"></button>';}
+  const side=hasPiece?'<div class="nextp"><div><small>ネク</small>'+vp(ps.q[ps.qi+1])+'</div><div class="nn"><small>ネクネク</small>'+vp(ps.q[ps.qi+2])+'</div></div>':'';
   html+='<div class="pstage"><div class="pcolwrap"><div class="pwrap">'+pzBoardHTML()+(hasPiece?'<div class="pcols">'+cols+'</div>':'')+'</div>'+
     '<div class="cn"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div></div>'+side+'</div>';
   if(playing){
@@ -860,14 +858,14 @@ function renderQuiz(){
       else if(i===cur.chosen)cls+=' ng';
       else cls+=' dim';
     }
-    const tag=answered&&(c.ok||i===cur.chosen)?'<span class="tag">'+(c.ok?'○':'×')+'</span>':'');
+    const tag=answered&&(c.ok||i===cur.chosen)?'<span class="tag">'+(c.ok?'○':'×')+'</span>':'';
     return '<button class="'+cls+'" data-act="choice" data-i="'+i+'" '+(answered?'disabled':'')+' aria-label="選択肢'+(i+1)+'">'+boardHTML(c.b,'',q.board)+tag+'</button>';
   }).join('');
   let fb='',bar='';
   if(answered){
     const last=sess.i===sess.qs.length-1;
     fb='<div class="fb '+(cur.ok?'ok':'ng')+'"><div class="verdict"><span>'+(cur.ok?'正解！':'不正解')+'</span><small>'+(cur.ms/1000).toFixed(1)+'秒</small></div>'+
-      '<p>'+(cur.ok?'' : '正解は ○ の配置。')+q.note+'<br><small style="color:var(--sub)">'+q.legend+'</small></p></div>';
+      '<p>'+(cur.ok?'':'正解は ○ の配置。')+q.note+'<br><small style="color:var(--sub)">'+q.legend+'</small></p></div>';
     bar='<div class="bottombar"><button class="btn" data-act="next">'+(last?'結果を見る':'次の問題')+'</button></div>';
   }
   app.innerHTML=
@@ -923,7 +921,7 @@ function answer(i){
   });
 }
 function next(){
-  if(sess.i<sess.qs.length-1){sess.i++;renderQuiz();window.scrollTo(0,0);} 
+  if(sess.i<sess.qs.length-1){sess.i++;renderQuiz();window.scrollTo(0,0);}
   else{
     if(!sess.retry){
       const n=sess.qs.length;
@@ -942,7 +940,7 @@ app.addEventListener('click',e=>{
   else if(a==='next')next();
   else if(a==='retry')startRetry();
   else if(a==='home'){sess=null;ps=null;renderHome();window.scrollTo(0,0);}
-  else if(a==='tab'){store.tab=b.dataset.v;save();renderHome();window.scrollTo(0,0);} 
+  else if(a==='tab'){store.tab=b.dataset.v;save();renderHome();window.scrollTo(0,0);}
   else if(a==='pstart')startPuzzle();
   else if(a==='pcol')pzPlace(+b.dataset.c);
   else if(a==='rotl')pzRot(-1);
