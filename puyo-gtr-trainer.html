@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="color-scheme" content="light dark">
+<title>GTR 初手ノック</title>
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#f1f3f8;--fg:#1b2133;--sub:#5d667e;--card:#ffffff;--line:#d9deea;
+  --accent:#0b8f8d;--on-accent:#ffffff;--go:#ff8a1f;--on-go:#2b1300;--ok:#1a9b57;--ng:#d6383f;
+  --board:#1c2a4a;--slot:#2b3c66;
+  --r:#e5484d;--b:#3e7bfa;--g:#2fa56b;--y:#f6c619;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0d1220;--fg:#e8ecf7;--sub:#9aa5c2;--card:#161e33;--line:#2b3656;
+    --accent:#3cc7c4;--on-accent:#06201f;--go:#ff9a3c;--on-go:#2b1300;--ok:#47d08a;--ng:#ff6b72;
+    --board:#0a1224;--slot:#1b2744;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+  -webkit-text-size-adjust:100%}
+#app{max-width:520px;margin:0 auto;padding:14px 14px calc(96px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+h1{font-size:26px;margin:8px 0 2px;letter-spacing:.02em}
+h2{font-size:18px;margin:0}
+.sub{color:var(--sub);margin:0 0 16px;font-size:14px}
+
+.btn{display:block;width:100%;min-height:54px;border:0;border-radius:14px;font-size:18px;font-weight:700;
+  background:var(--accent);color:var(--on-accent);padding:12px}
+.btn.go{background:var(--go);color:var(--on-go);box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.btn.ghost{background:transparent;color:var(--fg);border:2px solid var(--line)}
+.btn.danger{background:transparent;color:var(--ng);border:2px solid var(--line);font-size:14px;min-height:44px;font-weight:600}
+.stack{display:grid;gap:10px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0}
+.card h3{margin:0 0 10px;font-size:15px}
+.row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.row:first-of-type{border-top:0}
+.row .nm{flex:1}
+.row .sc{color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dots{display:flex;gap:3px}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--accent)}
+.badge{font-size:12px;font-weight:700;color:var(--on-accent);background:var(--ok);border-radius:99px;padding:2px 8px}
+details summary{font-weight:700;cursor:pointer;padding:4px 0}
+details p{font-size:13px;line-height:1.7;color:var(--sub);margin:8px 0 0}
+
+/* quiz */
+.top{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-variant-numeric:tabular-nums}
+.quit{background:none;border:0;color:var(--sub);font-size:14px;padding:8px 4px}
+.bar{height:6px;border-radius:3px;background:var(--line);margin:6px 0 14px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.info{display:flex;gap:14px;align-items:flex-start;margin:12px 0 14px}
+.tsumo{flex:1;display:grid;gap:6px}
+.ts{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:12px;border:2px solid transparent;opacity:.5}
+.ts small{width:40px;font-size:12px;color:var(--sub);font-weight:700}
+.ts.now{opacity:1;border-color:var(--accent);background:var(--card)}
+.ts.later{opacity:.85}
+.pair{display:flex;gap:4px}
+.pair .puyo{width:30px;font-size:15px}
+.curboard{width:112px;flex:none}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{padding:6px;border-radius:14px;border:3px solid var(--line);background:var(--card);position:relative}
+.choice:active{transform:scale(.98)}
+.choice.ok{border-color:var(--ok)}
+.choice.ng{border-color:var(--ng)}
+.choice.dim{opacity:.45}
+.choice .tag{position:absolute;top:-2px;right:-2px;min-width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px}
+.choice.ok .tag{background:var(--ok)}
+.choice.ng .tag{background:var(--ng)}
+.choice:disabled{cursor:default}
+
+.board{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:4px;background:var(--board);border-radius:9px;container-type:inline-size}
+.cell{aspect-ratio:1/1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-size:9cqw;font-weight:800}
+.slot{background:var(--slot)}
+.cell.ghost{opacity:.5;outline:2px dashed rgba(255,255,255,.85);outline-offset:-2px;box-shadow:none}
+.cap{margin:0 0 8px;font-size:12px;color:var(--sub)}
+.puyo{color:#fff;box-shadow:inset -2px -3px 0 rgba(0,0,0,.2),inset 2px 2px 0 rgba(255,255,255,.35);aspect-ratio:1/1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800}
+.c-r{background:var(--r)}.c-b{background:var(--b)}.c-g{background:var(--g)}
+.c-y{background:var(--y);color:#3a2f00;text-shadow:none}
+
+.fb{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);border-left:6px solid var(--line)}
+.fb.ok{border-left-color:var(--ok)}
+.fb.ng{border-left-color:var(--ng)}
+.verdict{font-size:20px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline}
+.fb.ok .verdict{color:var(--ok)}
+.fb.ng .verdict{color:var(--ng)}
+.verdict small{font-size:13px;color:var(--sub);font-weight:600}
+.fb p{margin:4px 0 0;font-size:14px;line-height:1.6}
+.bottombar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+.bottombar .btn{max-width:520px;margin:0 auto}
+.big{font-size:54px;font-weight:800;margin:6px 0 0;font-variant-numeric:tabular-nums}
+.big small{font-size:22px;color:var(--sub)}
+@media (prefers-reduced-motion:reduce){.choice:active{transform:none}}
+
+.opt{display:flex;align-items:center;gap:12px;min-height:48px;font-size:16px;cursor:pointer}
+.opt input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.opt.dis{opacity:.45}
+.group{margin:2px 0 10px 0}
+.group.indent{margin-left:6px;padding-left:12px;border-left:3px solid var(--line)}
+.card h3.sp{margin-top:14px}
+.chip{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--line);color:var(--sub);vertical-align:middle}
+.warn{color:var(--ng);font-size:13px;margin:6px 0 0}
+.btn:disabled{opacity:.4;cursor:default}
+details.ty{border-top:1px solid var(--line);padding:6px 0}
+details.ty:first-of-type{border-top:0}
+details.ty summary{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+details.ty summary span:last-child{color:var(--sub);font-weight:600;font-size:13px}
+
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card);border:1px solid var(--line);padding:4px;border-radius:14px;margin:0 0 4px}
+.tab{min-height:44px;border:0;border-radius:10px;background:transparent;font-weight:700;font-size:15px;color:var(--sub)}
+.tab.sel{background:var(--accent);color:var(--on-accent)}
+.cell.spare{opacity:.22}
+.cell.hint{outline:3px solid var(--accent);outline-offset:-3px;opacity:.95;animation:pulse 1s ease-in-out infinite}
+.slot.hint{outline:3px solid var(--accent);outline-offset:-3px}
+@keyframes pulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.cell.hint{animation:none}}
+.pwrap{position:relative;max-width:360px;margin:10px auto 0}
+.pcols{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr)}
+.pcols button{background:transparent;border:0;padding:0;border-radius:8px}
+.pcols button:active{background:rgba(255,255,255,.15)}
+.cn{display:grid;grid-template-columns:repeat(6,1fr);max-width:360px;margin:2px auto 0;text-align:center;font-size:11px;color:var(--sub)}
+.oris{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0 4px}
+.ori{border:3px solid var(--line);border-radius:14px;background:var(--card);padding:8px;min-width:70px;min-height:76px;display:flex;align-items:center;justify-content:center}
+.ori.sel{border-color:var(--accent)}
+.opair{display:flex;gap:3px}
+.opair.v{flex-direction:column}
+.opair .puyo{width:28px;font-size:14px}
+.queue{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0}
+.qp{padding:3px 5px;border-radius:9px;border:2px solid transparent}
+.qp.now{border-color:var(--accent);background:var(--card)}
+.qp .pair{gap:2px}
+.qp .puyo{width:20px;font-size:11px}
+.msg{min-height:26px;text-align:center;font-size:14px;font-weight:700;margin:6px 0 2px}
+.msg.ng{color:var(--ng)}
+.msg.hint{color:var(--accent)}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.btn.small{min-height:48px;font-size:16px;padding:8px 4px}
+.minigrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+.mini h4{margin:0 0 4px;font-size:13px}
+.mini p{margin:4px 0 0;font-size:11px;color:var(--sub);line-height:1.5}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:14px}
+.stat div{background:var(--bg);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+
+.pstage{display:flex;gap:10px;justify-content:center;align-items:flex-start;max-width:430px;margin:10px auto 0}
+.pcolwrap{flex:1;max-width:290px;min-width:0}
+.pcolwrap .pwrap{margin:0;max-width:none}
+.pcolwrap .cn{max-width:none}
+.nextp{width:78px;flex:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 4px;display:grid;gap:10px;justify-items:center}
+.nextp small{display:block;text-align:center;font-size:10px;color:var(--sub);font-weight:700;margin-bottom:3px}
+.pairv{display:flex;flex-direction:column;gap:2px;align-items:center;min-height:20px}
+.nextp .pairv .puyo{width:32px;font-size:15px}
+.nextp .nn .pairv .puyo{width:24px;font-size:12px}
+.cell.air{background:transparent}
+.cell.axis{outline:3px solid #fff;outline-offset:-3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.rot{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:430px;margin:12px auto 0}
+.rot .btn{font-size:17px}
+.gtog{display:block;margin:8px auto 0;min-height:44px;padding:8px 18px;border-radius:99px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:14px}
+.gtog.on{border-color:var(--accent);color:var(--accent)}
+.inline{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px 6px;padding-left:12px;border-left:3px solid var(--line)}
+.inline .opt{min-height:44px;font-size:15px;gap:6px;margin-right:10px}
+.rest{text-align:center;font-size:12px;color:var(--sub);margin-top:10px}
+.rest .queue{margin:4px 0 0}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.row4 .btn.small{font-size:14px;padding:8px 2px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ===== データ(出典: ぷよぷよのコツ「【GTR完全定型化】各型手順まとめ」keepuyo.com) ===== */
+const LS='puyo-gtr-aaab-v1', MASTER=5, N=10, COLS=6, ROWS=5;
+const CN={r:'赤',b:'青',g:'緑',y:'黄'};
+const COLOR_IDS=['r','b','g','y'];
+const PAT7=['AA','AB','AC','BB','BC','CC','CD'];
+const PAT10=['AA','AB','AC','AD','BB','BC','BD','CC','CD','DD'];
+const PATAABC=['AA','AB','AD','BB','BC','BD','DD'];
+const TYPES={
+  aaab:{name:'AAAB型',keys:['m1','m2-basic','m2-BB','m3-AA','m3-AB','m3-AC','m3-BC','m3-CC']},
+  abab:{name:'ABAB(AABB)型',keys:['abab-m1','abab-m2','abab-m3-AA','abab-m3-AB','abab-m3-BB','abab-m3-BC','abab-m3-CC']},
+  abac:{name:'ABAC型',keys:['abac-m1','abac-m2','abac-m3-AA','abac-m3-AB','abac-m3-AC','abac-m3-AD','abac-m3-BB','abac-m3-BC','abac-m3-BD','abac-m3-CC','abac-m3-CD','abac-m3-DD']},
+  aabc:{name:'AABC型',keys:['aabc-m1','aabc-m2-AA','aabc-m2-AB','aabc-m2-BD','aabc-m2-BC','aabc-m3-AA','aabc-m3-AB','aabc-m3-AD','aabc-m3-BC','aabc-m3-BD','aabc-m3-DD']}
+};
+const TYPE_IDS=Object.keys(TYPES);
+const LABEL={
+  'm1':'1手目 AA','m2-basic':'2手目 AB(基本)','m2-BB':'2手目 AB(3手目がBBの例外)','m3-AA':'3手目 AA','m3-AB':'3手目 AB','m3-AC':'3手目 AC','m3-BC':'3手目 BC','m3-CC':'3手目 CC',
+  'abab-m1':'1手目','abab-m2':'2手目',
+  'abab-m3-AA':'3手目 AA','abab-m3-AB':'3手目 AB','abab-m3-BB':'3手目 BB','abab-m3-BC':'3手目 BC','abab-m3-CC':'3手目 CC',
+  'abac-m1':'1手目','abac-m2':'2手目',
+  'aabc-m1':'1手目 AA','aabc-m2-AA':'2手目(3手目AA)','aabc-m2-AB':'2手目(3手目AB)','aabc-m2-BD':'2手目(3手目BD)','aabc-m2-BC':'2手目(3手目BC)'
+};
+PAT10.forEach(p=>{LABEL['abac-m3-'+p]='3手目 '+p;});
+['AA','AB','AD','BC','BD','DD'].forEach(p=>{LABEL['aabc-m3-'+p]='3手目 '+p;});
+const KEYTYPE={};TYPE_IDS.forEach(t=>TYPES[t].keys.forEach(k=>{KEYTYPE[k]=t;}));
+
+const NOTE={
+  'm1':'初手AAは1・2列目に横置き。',
+  'm2-basic':'ABはBを下にして3列目に縦置き���',
+  'm2-BB':'3手目がBBのときの例外。ABは2列目にB下で縦置きし、BBを1列目に縦置きしてGTR完成。',
+  'm3-AA':'AAは4・5列目に横置き。',
+  'm3-AB':'ABはA下で4列目に縦置き。2列目B下だと折返しと土台の両方でBが必要になり不安定。',
+  'm3-AC':'ACはC下で2列目に縦置き。(4手目が見えない前提)',
+  'm3-BC':'BCはC下で4列目に縦置き。',
+  'm3-CC':'CCは1・2列目に横置き。',
+  'abab-m1':p=>p.variant==='ABAB'?'ABAB型の1手目は、1列目にA下で縦置き。':'AABB型の1手目AAは、1・2列目に横置き。',
+  'abab-m2':p=>p.variant==='ABAB'?'2手目は2列目にA下で縦置き。1・2列目の1段目と2段目がそれぞれ同色になる。(3手目次第で上下を入れ替える場合もある)':'2手目BBは1・2列目に横置き。1・2列目の1段目と2段目がそれぞれ同色になる。',
+  'abab-m3-AA':'AAは4・5列目に横置き(平積み)。',
+  'abab-m3-AB':'ABはAを右にして1・2列目に横置き。',
+  'abab-m3-BB':'BBは4・5列目に横置き(平積み)。',
+  'abab-m3-BC':'BCはB下で1列目に縦置き。第三色で座布団を作りやすくなる。',
+  'abab-m3-CC':'CCは4・5列目に横置き。(4手目が見えない前提。4手目がACのときは例外あり)',
+  'abac-m1':'1手目ABはAを左にして2・3列目に横置き。(1手目をA下で1列目に縦置きし、2手目ACをAを左にして2・3列目に横置きでもOK)',
+  'abac-m2':p=>p.v==='X'?'2手目ACはA下で1列目に縦置き。':'2手目ACはAを左にして2・3列目に横置き。',
+  'abac-m3-AA':'AAは3・4列目に横置き(平積み)。',
+  'abac-m3-AB':'ABはAを右にして2・3列目に横置き。',
+  'abac-m3-AC':'ACはA下で3列目に縦置き。',
+  'abac-m3-AD':'ADはAを左にして3・4列目に横置き。',
+  'abac-m3-BB':'BBは1・2列目に横置き。',
+  'abac-m3-BC':'BCはB下で3列目に縦置き。',
+  'abac-m3-BD':'BDはB下で1列目に縦置き。第三色が4段目に来て座布団を敷きやすい。',
+  'abac-m3-CC':'CCは4列目に縦置き(L字型の土台を目指す)。',
+  'abac-m3-CD':'CDはC上で4列目に縦置き。',
+  'abac-m3-DD':'DDは5・6列目に横置き。(4手目に2Y型が狙える色が見える場合は4・5列目)',
+  'aabc-m1':'初手AAは1・2列目に横置き。',
+  'aabc-m2-AA':'3手目がAAなら、2手目BCは2・3列目に横置き(左右どちらでもOK)。',
+  'aabc-m2-AB':'3手目がABなら、2手目はBを上にして4列目に縦���き。',
+  'aabc-m2-BD':'3手目がBDなら、2手目はBを右にして3・4列目に横置き。',
+  'aabc-m2-BC':'3手目がBCなら、2手目は3・4列目に横置き(向きはどちらでもOK)。',
+  'aabc-m3-AA':'AAは2・3列目に横置き。',
+  'aabc-m3-AB':'ABはB下で3列目に縦置きして完成。',
+  'aabc-m3-AD':'ADはAを右にして2・3列目に横置き。',
+  'aabc-m3-BC':'BCは、2手目で右側に置いた色を下にして5列目に縦置き。',
+  'aabc-m3-BD':'BDはBを左にして5・6列目に横置き。',
+  'aabc-m3-DD':'DDは1・2列目に横置き。'
+};
+
+/* ===== 盤面ロジック ===== */
+const V=(col,lo,hi)=>({k:'v',col,lo,hi});
+const H=(col,l,r)=>({k:'h',col,l,r});
+function emptyBoard(){return Array.from({length:COLS},()=>[]);}
+function clone(b){return b.map(c=>c.slice());}
+function apply(board,pl){
+  const b=clone(board);
+  if(pl.k==='v'){b[pl.col].push(pl.lo,pl.hi);} 
+  else{b[pl.col].push(pl.l);b[pl.col+1].push(pl.r);} 
+  return b;
+}
+function sig(b){return b.map(c=>c.join('')).join('|');}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function rnd(a){return a[Math.floor(Math.random()*a.length)];}
+function cands(piece){
+  const x=piece[0],y=piece[1],L=[];
+  for(let c=0;c<COLS;c++){L.push(V(c,x,y));if(x!==y)L.push(V(c,y,x));}
+  for(let c=0;c<COLS-1;c++){L.push(H(c,x,y));if(x!==y)L.push(H(c,y,x));}
+  return L;
+}
+function parts(key){
+  const ps=key.split('-'),t=KEYTYPE[key];
+  return t==='aaab'?{type:t,step:ps[0],sub:ps[1]}:{type:t,step:ps[1],sub:ps[2]};
+}
+function newParams(key){
+  const ids=shuffle(COLOR_IDS);
+  const map={A:ids[0],B:ids[1],C:ids[2],D:ids[3]};
+  const sp=parts(key),p={key,map,pat3:'AA'};
+  if(sp.type==='aaab'){
+    if(key==='m1')p.pat3=rnd(PAT7);
+    else if(key==='m2-basic')p.pat3=rnd(PAT7.filter(x=>x!=='BB'));
+    else if(key==='m2-BB')p.pat3='BB';
+    else p.pat3=sp.sub;
+  }else if(sp.type==='abab'){
+    p.variant=rnd(['ABAB','AABB']);
+    p.pat3=sp.step==='m3'?sp.sub:rnd(PAT7);
+  }else if(sp.type==='abac'){
+    p.v=rnd(['X','Y']);
+    p.pat3=sp.step==='m3'?sp.sub:rnd(PAT10);
+  }else{
+    p.orient=rnd([0,1]);
+    if(sp.step==='m1')p.pat3=rnd(PATAABC);
+    else p.pat3=sp.sub;
+  }
+  return p;
+}
+function buildQ(p){
+  const m=p.map,A=m.A,B=m.B,C=m.C,D=m.D;
+  const pc=s=>[m[s[0]],m[s[1]]];
+  const sp=parts(p.key);
+  let t,board,piece,step,corrects,force=[];
+  const E=emptyBoard();
+  if(sp.type==='aaab'){
+    t=[[A,A],[A,B],pc(p.pat3)];
+    const afterM1=apply(E,H(0,A,A));
+    if(p.key==='m1'){board=E;piece=t[0];step=0;corrects=[H(0,A,A)];}
+    else if(p.key==='m2-basic'){board=afterM1;piece=t[1];step=1;corrects=[V(2,B,A)];}
+    else if(p.key==='m2-BB'){board=afterM1;piece=t[1];step=1;corrects=[V(1,B,A)];force=[V(2,B,A)];}
+    else{
+      board=apply(afterM1,V(2,B,A));step=2;piece=pc(p.pat3);
+      corrects=[{'AA':H(3,A,A),'AB':V(3,A,B),'AC':V(1,C,A),'BC':V(3,C,B),'CC':H(0,C,C)}[p.pat3]];
+    }
+  }else if(sp.type==='abab'){
+    const ab=p.variant==='ABAB';
+    t=ab?[[A,B],[A,B]]:[[A,A],[B,B]];t.push(pc(p.pat3));
+    const m1pl=ab?V(0,A,B):H(0,A,A);
+    const m2pl=ab?V(1,A,B):H(0,B,B);
+    if(sp.step==='m1'){board=E;piece=t[0];step=0;corrects=[m1pl];}
+    else if(sp.step==='m2'){board=apply(E,m1pl);piece=t[1];step=1;corrects=[m2pl];}
+    else{
+      board=apply(apply(E,m1pl),m2pl);step=2;piece=pc(p.pat3);
+      corrects=[{'AA':H(3,A,A),'AB':H(0,B,A),'BB':H(3,B,B),'BC':V(0,B,C),'CC':H(3,C,C)}[p.pat3]];
+    }
+  }else if(sp.type==='abac'){
+    t=[[A,B],[A,C],pc(p.pat3)];
+    const x1=H(1,A,B),y1=V(0,A,B);
+    if(sp.step==='m1'){board=E;piece=t[0];step=0;corrects=[x1,y1];}
+    else if(sp.step==='m2'){
+      step=1;piece=t[1];
+      if(p.v==='X'){board=apply(E,x1);corrects=[V(0,A,C)];}
+      else{board=apply(E,y1);corrects=[H(1,A,C)];}
+    }else{
+      board=apply(apply(E,x1),V(0,A,C));step=2;piece=pc(p.pat3);
+      corrects=[{'AA':H(2,A,A),'AB':H(1,B,A),'AC':V(2,A,C),'AD':H(2,A,D),'BB':H(0,B,B),
+        'BC':V(2,B,C),'BD':V(0,B,D),'CC':V(3,C,C),'CD':V(3,D,C),'DD':H(4,D,D)}[p.pat3]];
+    }
+  }else{
+    t=[[A,A],[B,C],pc(p.pat3)];
+    const base1=apply(E,H(0,A,A));
+    const lr=p.orient?[B,C]:[C,B]; /* 2手目を3・4列目に置いたときの左右(向きは問わない場面用) */
+    const basic=H(2,lr[0],lr[1]);
+    if(sp.step==='m1'){board=E;piece=t[0];step=0;corrects=[H(0,A,A)];}
+    else if(sp.step==='m2'){
+      board=base1;piece=t[1];step=1;
+      corrects={'AA':[H(1,B,C),H(1,C,B)],'AB':[V(3,C,B)],'BD':[H(2,C,B)],'BC':[H(2,B,C),H(2,C,B)]}[sp.sub];
+    }else{
+      step=2;piece=pc(p.pat3);
+      if(sp.sub==='AA'){board=apply(base1,H(1,lr[0],lr[1]));corrects=[H(1,A,A)];}
+      else if(sp.sub==='AB'){board=apply(base1,V(3,C,B));corrects=[V(2,B,A)];}
+      else if(sp.sub==='AD'){board=apply(base1,basic);corrects=[H(1,D,A)];}
+      else if(sp.sub==='BC'){board=apply(base1,basic);corrects=[V(4,lr[1],lr[0])];}
+      else if(sp.sub==='BD'){board=apply(base1,H(2,C,B));corrects=[H(4,B,D)];}
+      else{board=apply(base1,basic);corrects=[H(0,D,D)];}
+    }
+  }
+  const okSigs={};corrects.forEach(c=>{okSigs[sig(apply(board,c))]=1;});
+  const shown=rnd(corrects),cb=apply(board,shown);
+  const seen={};Object.keys(okSigs).forEach(k=>{seen[k]=1;});
+  const wrong=[];
+  force.concat(shuffle(cands(piece))).forEach(pl=>{
+    if(wrong.length>=3)return;
+    const nb=apply(board,pl),s=sig(nb);
+    if(seen[s])return;seen[s]=1;wrong.push(nb);
+  });
+  const choices=shuffle([{b:cb,ok:true}].concat(wrong.map(b=>({b,ok:false}))));
+  let letters='ABC';
+  if((p.pat3+'').indexOf('D')>=0)letters+='D';
+  const legend=letters.split('').map(L=>L+'='+CN[m[L]]).join(' ');
+  const nt=NOTE[p.key];
+  return {board,t,step,choices,note:typeof nt==='function'?nt(p):nt,legend,type:sp.type};
+}
+
+/* ===== 学習記録・設定 ===== */
+let store={keys:{},hist:[],set:{mode:'all',types:TYPE_IDS.slice(),steps:'all'},tab:'quiz',pset:{mode:'all',forms:['f1','f2','f3','f4','f5','f6'],ghost:'always',n:3},pz:{}};
+try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.keys){store=s;}}catch(e){}
+if(!store.set)store.set={mode:'all',types:TYPE_IDS.slice(),steps:'all'};
+if(!store.tab)store.tab='quiz';
+if(!store.pset)store.pset={mode:'all',forms:['f1','f2','f3','f4','f5','f6'],ghost:'always',n:3};
+if(!store.pz)store.pz={};
+if(!store.pset.ghost)store.pset.ghost='always';
+if(!store.pset.n)store.pset.n=3;
+function save(){try{localStorage.setItem(LS,JSON.stringify(store));}catch(e){}}
+function record(key,ok,ms){
+  const s=store.keys[key]||(store.keys[key]={att:0,cor:0,streak:0,tms:0});
+  s.att++;if(ok)s.cor++;s.streak=ok?s.streak+1:0;s.tms+=ms;save();
+}
+function weight(k){
+  const s=store.keys[k];
+  if(!s||!s.att)return 1.5;
+  if(s.streak>=MASTER)return .35;
+  if(s.streak===0)return 3;
+  return 1;
+}
+function enabledKeys(){
+  const st=store.set;
+  const types=st.mode==='all'?TYPE_IDS:TYPE_IDS.filter(t=>st.types.indexOf(t)>=0);
+  let ks=[];types.forEach(t=>{ks=ks.concat(TYPES[t].keys);});
+  if(st.steps==='12')ks=ks.filter(k=>parts(k).step!=='m3');
+  else if(st.steps==='3')ks=ks.filter(k=>parts(k).step==='m3');
+  return ks;
+}
+function pickKey(list){
+  const w=list.map(weight),tot=w.reduce((a,b)=>a+b,0);
+  let r=Math.random()*tot;
+  for(let i=0;i<list.length;i++){r-=w[i];if(r<=0)return list[i];}
+  return list[0];
+}
+
+
+/* ===== 組み立てモード: 目標形(ぷよぷよキャンプの土台紹介記事の図を読み取り) ===== */
+/* 文字は配色の記号。A=赤 B=青 C=緑 D=黄(図の標準配色)。各列は下から上の順。 */
+const FORMS=[
+  {id:'f1',name:'① 厚みのある土台',lv:'初級者向け',memo:'厚みのある土台で高火力が期待できます',cols:['ACC','ACA','BAB','BBDDC','DDAAC','AACC']},
+  {id:'f2',name:'② 鍵積み',lv:'初級者向け',memo:'完全に鍵だけで組み切る場合は少ない。土台パーツとして取り入れると◎',cols:['ACC','ACA','BABB','DBDD','ADAA','CACCC']},
+  {id:'f3',name:'③ TOMスペシャル',lv:'初級者〜中級者向け',memo:'見た目が美しく、連鎖尾が非常に入れやすい',cols:['ACC','ACA','BAB','BBD','DDC','CDCC']},
+  {id:'f4',name:'④ 横2その1(雪崩)',lv:'初級者〜中級者向け',memo:'雪崩を入れやすく、圧倒的安定感がウリ',cols:['ACC','ACA','BAB','DBC','DBDC','CDC']},
+  {id:'f5',name:'⑤ 横2その2',lv:'中級者向け',memo:'端を高くしやすいところが◎。デアリス派生もある',cols:['ACC','ACA','BAB','ABD','ABD','DDAA']},
+  {id:'f6',name:'⑥ 横3⇒雪崩',lv:'初級者〜上級者向け',memo:'圧倒的安定感と驚異的な柔軟性を併せ持つ。★一番オススメな形',cols:['ACC','ACA','BAB','DBC','DBDC','DBCC']}
+];
+const FORM_BY_ID={};FORMS.forEach(f=>{FORM_BY_ID[f.id]=f;});
+const PZ_MASTER=3, PZR=6, PZS=3;
+const STD={A:'r',B:'b',C:'g',D:'y'};
+
+/* 置き方 pl: {k:'v',c,lo,hi} か {k:'h',c,l,r}。h は各列の現在の高さ */
+function plCells(h,pl){
+  if(pl.k==='v')return [[pl.c,h[pl.c],pl.lo],[pl.c,h[pl.c]+1,pl.hi]];
+  return [[pl.c,h[pl.c],pl.l],[pl.c+1,h[pl.c+1],pl.r]];
+}
+function plApplyH(h,pl){
+  const n=h.slice();
+  if(pl.k==='v')n[pl.c]+=2;else{n[pl.c]++;n[pl.c+1]++;}
+  return n;
+}
+/* 置き方のならび順の目安: 左・下にあるほど先(左から順に組む感覚に近づける) */
+function plScore(h,pl){
+  return Math.max.apply(null,plCells(h,pl).map(cl=>cl[0]*0.8+cl[1]));
+}
+/* ツモ列の生成: 目標形を2個ずつ置いて完成できる並びを探す。
+   prefix に置き方を渡すと、最初の何手かをそのとおりに固定する。戻り値は {seq: ツモ列, pls: 置き方の列} */
+function pzGen(cols,prefix){
+  const H=cols.map(c=>c.length),h=[0,0,0,0,0,0],seq=[],pls=[],bad={};
+  function opts(){
+    const L=[];
+    for(let c=0;c<6;c++){
+      if(h[c]+1<H[c])L.push({k:'v',c,lo:cols[c][h[c]],hi:cols[c][h[c]+1]});
+      if(c<5&&h[c]<H[c]&&h[c+1]<H[c+1])L.push({k:'h',c,l:cols[c][h[c]],r:cols[c+1][h[c+1]]});
+    }
+    return L;
+  }
+  for(const pl of (prefix||[])){
+    const cs=plCells(h,pl);
+    if(!cs.every(cl=>cl[1]<H[cl[0]]&&cols[cl[0]][cl[1]]===cl[2]))return null;
+    seq.push([cs[0][2],cs[1][2]]);pls.push(pl);
+    const nh=plApplyH(h,pl);for(let i=0;i<6;i++)h[i]=nh[i];
+  }
+  function dfs(){
+    if(h.every((v,i)=>v===H[i]))return true;
+    const key=h.join(',');if(bad[key])return false;
+    const L=opts().map(o=>{
+      const cs=plCells(h,o),same=cs[0][2]===cs[1][2];
+      return {o,s:plScore(h,o)+Math.random()*1.2-(same?0.5:0)};
+    }).sort((a,b)=>a.s-b.s).map(x=>x.o);
+    for(const o of L){
+      const cs=plCells(h,o),save=h.slice(),nh=plApplyH(h,o);
+      for(let i=0;i<6;i++)h[i]=nh[i];
+      seq.push([cs[0][2],cs[1][2]]);pls.push(o);
+      if(dfs())return true;
+      seq.pop();pls.pop();for(let i=0;i<6;i++)h[i]=save[i];
+    }
+    bad[key]=true;return false;
+  }
+  return dfs()?{seq:seq.slice(),pls:pls.slice()}:null;
+}
+/* ツモ列 q を qi 手目から置いて、目標形を完成できるか(できるなら置き方の列を返す)。
+   ぷよの数が目標より多いぶん(ゴミぷよ)は、目標形の外(その列が完成した上)に置いてよい */
+function pzFind(req,h,qi,q,bad){
+  const H=req.map(c=>c.length);
+  const cells=H.reduce((a,b)=>a+b,0);
+  return pzFind2(req,H,h,qi,q,bad,2*q.length-cells);
+}
+/* 置いたぷよの組 cs=[[列,段,色],..] を判定。目標どおりなら0、ゴミなら1の数、置けないなら-1 */
+function pzEval(req,H,cs){
+  let g=0;
+  for(const cl of cs){
+    if(cl[1]>=PZR)return -1;
+    if(cl[1]<H[cl[0]]){if(req[cl[0]][cl[1]]!==cl[2])return -1;}
+    else g++;
+  }
+  return g;
+}
+function pzFind2(req,H,h,qi,q,bad,allowed){
+  if(qi===q.length)return h.every((v,i)=>v>=H[i])?[]:null;
+  const key=qi+':'+h.join(',');if(bad[key])return null;
+  const used=h.reduce((a,v,i)=>a+Math.max(0,v-H[i]),0);
+  const x=q[qi][0],y=q[qi][1],tries=[];
+  const pairs=x===y?[[x,y]]:[[x,y],[y,x]];
+  for(let c=0;c<6;c++){
+    pairs.forEach(pr=>{
+      const gv=pzEval(req,H,[[c,h[c],pr[0]],[c,h[c]+1,pr[1]]]);
+      if(gv>=0&&used+gv<=allowed)tries.push({k:'v',c,lo:pr[0],hi:pr[1]});
+      if(c<5){
+        const gh=pzEval(req,H,[[c,h[c],pr[0]],[c+1,h[c+1],pr[1]]]);
+        if(gh>=0&&used+gh<=allowed)tries.push({k:'h',c,l:pr[0],r:pr[1]});
+      }
+    });
+  }
+  tries.sort((u,v)=>plScore(h,u)-plScore(h,v));
+  for(const pl of tries){
+    const rest=pzFind2(req,H,plApplyH(h,pl),qi+1,q,bad,allowed);
+    if(rest)return [pl].concat(rest);
+  }
+  bad[key]=true;return null;
+}
+/* 出題の準備: 最初の2手は、AAAB型の定番(1手目AAを1・2列目に横置き、2手目ABを3列目にB下で縦置き)。
+   ぷよの数が奇数の形は、いちばん上のぷよ1個を最後のツモの片方にして、もう片方は「ゴミぷよ」にする */
+const PZ_OPEN=[{k:'h',c:0,l:'A',r:'A'},{k:'v',c:2,lo:'B',hi:'A'}];
+function pzPrep(form){
+  const full=form.cols;
+  const total=full.reduce((a,c)=>a+c.length,0);
+  const gen=cols=>{
+    const g=pzGen(cols,PZ_OPEN)||pzGen(cols);
+    /* 2手目のツモは「AB」と表示(軸はA、Bを下にして縦置き) */
+    if(g&&g.pls[1]&&g.pls[1].k==='v'&&g.pls[1].lo==='B'&&g.pls[1].hi==='A')g.seq[1]=['A','B'];
+    return g;
+  };
+  if(total%2===0){const g=gen(full);return g?{req:full,opt:null,q:g.seq,sol:g.pls}:null;}
+  const tops=[];
+  full.forEach((c,i)=>tops.push({c:i,r:c.length-1}));
+  tops.sort((a,b)=>b.r-a.r||b.c-a.c);
+  for(const t of tops){
+    const part=full.map((c,i)=>i===t.c?c.slice(0,-1):c);
+    const g=gen(part);
+    if(g){
+      const spare=full[t.c][t.r],junk='ABCD'[Math.floor(Math.random()*4)];
+      g.seq.push([spare,junk]);g.pls.push({k:'v',c:t.c,lo:spare,hi:junk});
+      return {req:full,opt:null,q:g.seq,sol:g.pls};
+    }
+  }
+  return null;
+}
+
+/*UI*/
+/* ===== UI ===== */
+const app=document.getElementById('app');
+let sess=null,ps=null;
+function mk(params){return {params,q:buildQ(params),chosen:null,ok:null,ms:0,t0:0};}
+function boardHTML(b,cls,base){
+  let h='<div class="board '+(cls||'')+''>;
+  for(let r=ROWS-1;r>=0;r--)for(let c=0;c<COLS;c++){
+    const v=b[c][r];
+    const gh=base&&v&&r>=base[c].length?' ghost':'';
+    h+=v?'<div class="cell puyo c-'+v+gh+'>'+CN[v]+'</div>':'<div class="cell slot"></div>';
+  }
+  return h+'</div>';
+}
+function pairHTML(p){return '<div class="pair">'+p.map(v=>'<div class="puyo c-'+v+'">'+CN[v]+'</div>').join('')+'</div>';} 
+function pct(a,b){return b?Math.round(a/b*100):0;}
+function typeSummary(){
+  const st=store.set;
+  const names=st.mode==='all'?'全部の型':TYPE_IDS.filter(t=>st.types.indexOf(t)>=0).map(t=>TYPES[t].name.replace('型','')).join('・');
+  const sc=st.steps==='12'?'1・2手目':st.steps==='3'?'3手目':'';
+  return names+(sc?' / '+sc:'');
+}
+
+function renderQuizHome(){
+  const st=store.set,pickMode=st.mode==='pick';
+  const keys=enabledKeys();
+  let att=0,cor=0;
+  TYPE_IDS.forEach(t=>TYPES[t].keys.forEach(k=>{const s=store.keys[k];if(s){att+=s.att;cor+=s.cor;}}));
+  const radio=(name,val,label,checked)=>'<label class="opt"><input type="radio" name="'+name+'" value="'+val+'"'+(checked?' checked':'')+'>'+label+'</label>';
+  const typeBoxes=TYPE_IDS.map(t=>'<label class="opt'+(pickMode?'':' dis')+'"><input type="checkbox" name="type" value="'+t+'"'+(st.types.indexOf(t)>=0?' checked':'')+(pickMode?'':' disabled')+'>'+TYPES[t].name+'</label>').join('');
+  const none=!keys.length;
+  const settings=
+    '<div class="card"><h3>出題する型</h3>'+
+    radio('mode','all','すべての型からランダム',!pickMode)+
+    radio('mode','pick','選んだ型だけ',pickMode)+
+    '<div class="group indent">'+typeBoxes+'</div>'+
+    (none?'<p class="warn">型を1つ以上選んでください。</p>':'')+
+    '<h3 class="sp">出題する手</h3>'+
+    radio('steps','all','すべて(1〜3手目)',st.steps==='all')+
+    radio('steps','12','1・2手目だけ',st.steps==='12')+
+    radio('steps','3','3手目だけ',st.steps==='3')+'</div>';
+  const groups=TYPE_IDS.map(t=>{
+    let ta=0,tc=0,mast=0;
+    const rows=TYPES[t].keys.map(k=>{
+      const s=store.keys[k]||{att:0,cor:0,streak:0};
+      ta+=s.att;tc+=s.cor;if(s.streak>=MASTER)mast++;
+      let dots='';for(let i=0;i<MASTER;i++)dots+='<i class="'+(i<Math.min(s.streak,MASTER)?'on':'')+'"></i>';
+      return '<div class="row"><span class="nm">'+LABEL[k]+'</span>'+
+        (s.streak>=MASTER?'<span class="badge">習得済み</span>':'<span class="dots">'+dots+'</span>')+
+        '<span class="sc">'+(s.att?pct(s.cor,s.att)+'% ('+s.cor+'/'+s.att+')':'未挑戦')+'</span></div>';
+    }).join('');
+    return '<details class="ty"><summary><span>'+TYPES[t].name+'</span><span>'+(ta?pct(tc,ta)+'% ・ ':'')+'習得 '+mast+'/'+TYPES[t].keys.length+'</span></summary>'+rows+'</details>';
+  }).join('');
+  const hist=store.hist.slice(-8).reverse().map(h=>{
+    const d=new Date(h.t);
+    return '<div class="row"><span class="nm">'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'</span><span class="sc">'+h.c+'/'+h.n+'問 ・ '+pct(h.c,h.n)+'% ・ '+h.avg.toFixed(1)+'秒/問</span></div>';
+  }).join('');
+  app.innerHTML=
+    '<h1>GTR 初手ノック</h1><p class="sub">1セット'+N+'問 ・ 選ぶだけ</p>'+
+    '<button class="btn go" data-act="start"'+(none?' disabled':'')+'>'+N+'問スタート</button>'+
+    '<p class="sub" style="margin:8px 2px 0;font-size:13px">出題: '+typeSummary()+'</p>'+
+    settings+
+    '<div class="card"><h3>型ごとの成績(通算 '+(att?pct(cor,att)+'% ・ '+cor+'/'+att:'まだ記録なし')+')</h3>'+groups+
+    '<p class="sub" style="margin:10px 0 0;font-size:12px">'+MASTER+'回連続正解で「習得済み」。間違えた問題は出やすくなります。</p></div>'+
+    (hist?'<div class="card"><h3>最近のセット</h3>'+hist+'</div>':'')+
+    '<div class="card"><details><summary>出典と検証状況</summary><p>'+
+    '出典: ぷよぷよのコツ「【GTR完全定型化】AAAB型 / ABAB(AABB)型 / ABAC型 / AABC型 手順まとめ」(keepuyo.com)。ぷよぷよキャンプ「GTR完全定型化」(puyo-camp.jp/posts/125661)はそのリンク集です。<br>'+
+    '文章の記述から手順を作成しました。元ページの図は読み取れていないため、盤面と見比べて確認してください。4手目は見えない前提で出題しています。<br>'+
+    '出していない問題: AAAB 3手目BB・CD、ABAB 3手目AC・CD、AABC 2手目が3手目AD・BB・DDのとき、AABC 3手目BB。BCAA型は未実装。'+
+    '</p></details></div>'+
+    '<button class="btn danger" data-act="reset">学習記録を消す</button>';
+}
+
+
+function tabsHTML(){
+  return '<div class="tabs"><button class="tab'+(store.tab==='quiz'?' sel':'')+'" data-act="tab" data-v="quiz">ノック(選ぶ)</button><button class="tab'+(store.tab==='puzzle'?' sel':'')+'" data-act="tab" data-v="puzzle">組み立て(ゴースト)</button></div>';
+}
+function renderHome(){
+  if(store.tab==='puzzle')renderPuzzleHome();else renderQuizHome();
+  app.insertAdjacentHTML('afterbegin',tabsHTML());
+}
+function stdBoard(form){return form.cols.map(c=>c.split('').map(L=>STD[L]));}
+function enabledForms(){
+  const st=store.pset,all=FORMS.map(f=>f.id);
+  return st.mode==='all'?all:all.filter(id=>st.forms.indexOf(id)>=0);
+}
+function renderPuzzleHome(){
+  const st=store.pset,pick=st.mode==='pick',ids=enabledForms(),none=!ids.length;
+  const radio=(name,val,label,checked)=>'<label class="opt"><input type="radio" name="'+name+'" value="'+val+'"'+(checked?' checked':'')+'>'+label+'</label>';
+  const boxes=FORMS.map(f=>'<label class="opt'+(pick?'':' dis')+'"><input type="checkbox" name="pform" value="'+f.id+'"'+(st.forms.indexOf(f.id)>=0?' checked':'')+(pick?'':' disabled')+'>'+f.name+'</label>').join('');
+  const rows=FORMS.map(f=>{
+    const s=store.pz[f.id]||{done:0,clean:0,streak:0};
+    let dots='';for(let i=0;i<PZ_MASTER;i++)dots+='<i class="'+(i<Math.min(s.streak,PZ_MASTER)?'on':'')+'"></i>';
+    return '<div class="row"><span class="nm">'+f.name+'</span>'+
+      (s.streak>=PZ_MASTER?'<span class="badge">習得済み</span>':'<span class="dots">'+dots+'</span>')+
+      '<span class="sc">'+(s.done?s.done+'回完成':'未挑戦')+'</span></div>';
+  }).join('');
+  const minis=FORMS.map(f=>'<div class="mini"><h4>'+f.name+'</h4>'+boardHTML(stdBoard(f))+'<p>'+f.lv+'<br>'+f.memo+'</p></div>').join('');
+  app.innerHTML=
+    '<h1>GTR 組み立て</h1><p class="sub">半透明の目標形に向けて、ツモを置いて組む</p>'+
+    '<button class="btn go" data-act="pstart"'+(none?' disabled':'')+'>スタート</button>'+
+    '<p class="sub" style="margin:8px 2px 0;font-size:13px">出題: '+(pick?ids.map(id=>FORM_BY_ID[id].name.slice(0,1)).join('・')+' の形':'すべての形からランダム')+' / ゴースト: '+(st.ghost==='always'?'いつも表示':st.ghost==='off'?'隠す':st.n+'手ごとに表示')+'</p>'+
+    '<div class="card"><h3>出題する形</h3>'+
+    radio('pmode','all','すべての形からランダム',!pick)+
+    radio('pmode','pick','選んだ形だけ',pick)+
+    '<div class="group indent">'+boxes+'</div>'+
+    (none?'<p class="warn">形を1つ以上選んでください。</p>':'')+'</div>'+
+    '<div class="card"><h3>ゴースト(目標の形)の表示</h3>'+
+    radio('pghost','always','いつも表示',st.ghost==='always')+
+    radio('pghost','off','隠す(ボタンで見られる)',st.ghost==='off')+
+    radio('pghost','every','○手ごとに表示',st.ghost==='every')+
+    '<div class="inline">'+[2,3,4,5].map(n=>'<label class="opt'+(st.ghost==='every'?'':' dis')+'"><input type="radio" name="pn" value="'+n+'"'+(st.n===n?' checked':'')+(st.ghost==='every'?'':' disabled')+'>'+n+'手</label>').join('')+'</div>'+
+    '<p class="sub" style="margin:4px 0 0;font-size:12px">「○手ごと」は、1手目と、そこからその手数おきに目標の形が出ます。ほかの手は隠れるので、頭で組み立てを考える練習になります。プレイ中はボタンで出し入れもできます。</p></div>'+
+    '<div class="card"><h3>形ごとの成績</h3>'+rows+
+    '<p class="sub" style="margin:10px 0 0;font-size:12px">やり直し・ヒント・お手本なしで'+PZ_MASTER+'回連続で完成すると「習得済み」。色は毎回ランダムに入れ替わります。</p></div>'+
+    '<div class="card"><details><summary>形の一覧と出典</summary>'+
+    '<p>ぷよぷよキャンプ(puyo-camp.jp)の土台紹介記事の図(スクリーンショット)を読み取って作りました。元の図と見比べて、ズレがあれば教えてください。①の見出しは画面が切れていて読めていません。ツモの並びは、目標形をちょうど作れる並びをアプリが生成しています(資料の並びではありません)。</p>'+
+    '<div class="minigrid">'+minis+'</div></details></div>'+
+    '<button class="btn danger" data-act="preset">組み立ての記録を消す</button>';
+}
+
+/* ----- 組み立てモードの進行 ----- */
+function pzNormO(){}
+const DIRN=['上','右','下','左'];
+function startPuzzle(){
+  const ids=enabledForms();if(!ids.length)return;
+  const w=ids.map(id=>{const s=store.pz[id];if(!s||!s.done)return 1.5;if(s.streak>=PZ_MASTER)return .35;return s.streak===0?2:1;});
+  let r=Math.random()*w.reduce((a,b)=>a+b,0),pick=ids[0];
+  for(let i=0;i<ids.length;i++){r-=w[i];if(r<=0){pick=ids[i];break;}}
+  const form=FORM_BY_ID[pick],prep=pzPrep(form);
+  if(!prep){alert('問題を作れませんでした');return;}
+  const cs=shuffle(COLOR_IDS);
+  ps={form,req:prep.req,opt:prep.opt,q:prep.q,sol:prep.sol,qi:0,board:emptyBoard(),hist:[],fails:0,hints:0,gManual:null,
+      map:{A:cs[0],B:cs[1],C:cs[2],D:cs[3]},o:0,msg:'',msgCls:'',hint:null,done:false,t0:performance.now(),ms:0};
+  renderPuzzle();window.scrollTo(0,0);
+}
+/* いまの盤面が、目標形の「下から途中まで」と一致しているか */
+function pzOnTrack(){
+  const allowed=2*ps.q.length-ps.req.reduce((a,c)=>a+c.length,0);
+  let junk=0;
+  for(let c=0;c<6;c++){
+    const b=ps.board[c].join(''),H=ps.req[c].length;
+    const n=Math.min(b.length,H);
+    if(b.slice(0,n)!==ps.req[c].slice(0,n))return false;
+    junk+=Math.max(0,b.length-H);
+  }
+  return junk<=allowed;
+}
+/* 目標形の各セルが埋まっていればOK(その上のゴミぷよは気にしない) */
+function pzMatches(){return ps.req.every((c,i)=>ps.board[i].length>=c.length&&ps.board[i].slice(0,c.length).join('')===c);} 
+function pzGhostOn(){
+  if(ps.done||ps.qi>=ps.q.length)return true;
+  if(ps.gManual!==null)return ps.gManual;
+  const g=store.pset.ghost,n=store.pset.n||3;
+  if(g==='off')return false;
+  if(g==='every')return ps.qi%n===0;
+  return true;
+}
+function pzBoardHTML(){
+  const H=ps.req.map(c=>c.length),rows=PZR+PZS,hasPiece=!ps.done&&ps.qi<ps.q.length,ghost=pzGhostOn();
+  const cur={};
+  if(hasPiece){
+    const pc=ps.q[ps.qi],ac=2,ar=PZR+1,o=ps.o;
+    const dc=o===1?1:o===3?-1:0,dr=o===0?1:o===2?-1:0;
+    cur[ac+','+ar]={L:pc[0],axis:true};
+    cur[(ac+dc)+','+(ar+dr)]={L:pc[1],axis:false};
+  }
+  let h='<div class="board">';
+  for(let r=rows-1;r>=0;r--)for(let c=0;c<COLS;c++){
+    if(r>=PZR){
+      const k=cur[c+','+r];
+      if(k){const id=ps.map[k.L];h+='<div class="cell puyo c-'+id+(k.axis?' axis':'')+'>'+CN[ps.map[k.L]]+'</div>';} 
+      else h+='<div class="cell air"></div>';
+      continue;
+    }
+    const v=ps.board[c][r];
+    const isHint=ps.hint&&ps.hint.cells.some(x=>x[0]===c&&x[1]===r);
+    const hint=isHint?' hint':'';
+    if(v){const id=ps.map[v];h+='<div class="cell puyo c-'+id+'>'+CN[id]+'</div>';} 
+    else if(r<H[c]&&(ghost||isHint)){const id=ps.map[ps.req[c][r]];h+='<div class="cell puyo ghost c-'+id+hint+'>'+CN[id]+'</div>';} 
+    else if(ghost&&ps.opt&&ps.opt.c===c&&ps.opt.r===r){const id=ps.map[ps.opt.ch];h+='<div class="cell puyo ghost spare c-'+id+'>'+CN[id]+'</div>';} 
+    else h+='<div class="cell slot'+hint+'"></div>';
+  }
+  return h+'</div>';
+}
+function renderPuzzle(){
+  const total=ps.q.length,playing=!ps.done,hasPiece=playing&&ps.qi<total;
+  const junkN=2*total-ps.req.reduce((a,c)=>a+c.length,0);
+  const junkNote=junkN>0?'最後のツモは片方がゴミぷよ(その上など、目標の外ならどこに置いてもOK)。':'';
+  const pu=L=>'<div class="puyo c-'+ps.map[L]+'>'+CN[ps.map[L]]+'</div>';
+  const vp=pc=>'<div class="pairv">'+(pc?pu(pc[1])+pu(pc[0]):'')+'</div>';
+  let html=
+    '<div class="top"><span>'+ps.form.name+'</span><span>'+ps.qi+' / '+total+'手</span><button class="quit" data-act="home">やめる</button></div>'+
+    '<div class="bar"><i style="width:'+(ps.qi/total*100)+'%"></i></div>';
+  let cols='';
+  if(hasPiece){for(let c=0;c<6;c++)cols+='<button data-act="pcol" data-c="'+c+'" aria-label="'+(c+1)+'列目に落とす'></button>';} 
+  const side=hasPiece?'<div class="nextp"><div><small>ネク</small>'+vp(ps.q[ps.qi+1])+'</div><div class="nn"><small>ネクネク</small>'+vp(ps.q[ps.qi+2])+'</div></div>':'')
+  html+='<div class="pstage"><div class="pcolwrap"><div class="pwrap">'+pzBoardHTML()+(hasPiece?'<div class="pcols">'+cols+'</div>':'')+'</div>'+
+    '<div class="cn"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div></div>'+side+'</div>';
+  if(playing){
+    const on=pzGhostOn();
+    if(hasPiece)html+='<button class="gtog'+(on?' on':'')+'" data-act="gtog">ゴースト: '+(on?'表示中(タップで隠す)':'非表示(タップで見る)')+'</button>';
+    else html+='<p class="cap" style="text-align:center;margin-top:8px">半透明が目標の形。'+junkNote+'</p>';
+  }
+  if(playing){
+    if(hasPiece){
+      html+='<div class="rot"><button class="btn ghost small" data-act="rotl" aria-label="左回転">↺ 左回転</button><button class="btn ghost small" data-act="rotr" aria-label="右回転">右回転 ↻</button></div>';
+      html+='<div class="msg '+ps.msgCls+'">'+(ps.msg||'白い縁のぷよ(軸)を落としたい列をタップ')+'</div>';
+      html+='<div class="row4"><button class="btn ghost small" data-act="undo"'+(ps.hist.length?'':' disabled')+'>もどす</button><button class="btn ghost small" data-act="pretry"'+(ps.qi?'':' disabled')+'>やり直す</button><button class="btn ghost small" data-act="hint">ヒント</button><button class="btn ghost small" data-act="step">進む</button></div>';
+      html+='<p class="cap" style="text-align:center;margin-top:8px">「進む」は正解の場所に置いてくれます(ヒント扱い)。途中で形からズレていたら教えてくれます。'+junkNote+'</p>';
+      const rest=ps.q.slice(ps.qi+3);
+      if(rest.length)html+='<div class="rest">このあとのツモ<div class="queue">'+rest.map(p=>'<div class="qp"><div class="pair">'+pu(p[0])+pu(p[1])+'</div></div>').join('')+'</div></div>';
+    }else{
+      html+='<div class="msg">全部置いたよ。目標と同じ形になるまで、もどして別の手を考えてみよう</div>'+
+        '<div class="row3" style="grid-template-columns:1fr 1fr"><button class="btn ghost small" data-act="undo"'+(ps.hist.length?'':' disabled')+'>もどす</button><button class="btn ghost small" data-act="pretry">やり直す</button></div>';
+    }
+  }else{
+    html+='<div class="card"><h3>完成！</h3><div class="stat"><div>手数<b>'+total+'</b></div><div>時間<b>'+Math.round(ps.ms/1000)+'秒</b></div><div>やり直し<b>'+ps.fails+'</b></div><div>ヒント・お手本<b>'+ps.hints+'</b></div></div></div>'+
+      '<div class="stack"><button class="btn" data-act="pstart">次の問題</button><button class="btn ghost" data-act="home">ホームへ</button></div>';
+  }
+  app.innerHTML=html;
+}
+function pzFinish(){
+  ps.done=true;ps.ms=performance.now()-ps.t0;
+  const s=store.pz[ps.form.id]||(store.pz[ps.form.id]={done:0,clean:0,streak:0});
+  s.done++;
+  if(ps.fails===0&&ps.hints===0){s.clean++;s.streak++;}else s.streak=0;
+  save();
+}
+function pzBad(m){ps.msg=m;ps.msgCls='ng';renderPuzzle();}
+/* c は「軸(白い縁のぷよ)を落とす列」。o は軸から見た子の向き(0上 1右 2下 3左)。
+   横向きで端の列をタップしたときは、ゲームと同じく軸が内側に寄る */
+function pzPlace(c){
+  if(!ps||ps.done||ps.qi>=ps.q.length)return;
+  const pc=ps.q[ps.qi],x=pc[0],y=pc[1],o=ps.o;
+  let pl;
+  if(o===0)pl={k:'v',c,lo:x,hi:y};
+  else if(o===2)pl={k:'v',c,lo:y,hi:x};
+  else if(o===1)pl={k:'h',c:Math.min(c,4),l:x,r:y};
+  else pl={k:'h',c:Math.max(c,1)-1,l:y,r:x};
+  const h=ps.board.map(a=>a.length);
+  const cells=plCells(h,pl);
+  if(cells.some(cl=>cl[1]>=PZR)){pzBad('そこはこれ以上高く積めないよ');return;}
+  ps.hist.push({board:clone(ps.board),qi:ps.qi});
+  cells.forEach(cl=>{ps.board[cl[0]].push(cl[2]);});
+  ps.qi++;ps.hint=null;ps.gManual=null;ps.msg='';ps.msgCls='';ps.o=0;
+  if(ps.qi>=ps.q.length&&pzMatches())pzFinish();
+  renderPuzzle();
+}
+function pzRot(d){
+  if(!ps||ps.done||ps.qi>=ps.q.length)return;
+  ps.o=(ps.o+d+4)%4;ps.msg='';ps.msgCls='';renderPuzzle();
+}
+function pzUndo(){
+  if(!ps||ps.done||!ps.hist.length)return;
+  const hs=ps.hist.pop();
+  ps.board=hs.board;ps.qi=hs.qi;ps.o=0;ps.hint=null;ps.gManual=null;ps.msg='';ps.msgCls='';
+  renderPuzzle();
+}
+function pzRetry(){
+  if(!ps||ps.done)return;
+  if(ps.qi>0)ps.fails++;
+  ps.board=emptyBoard();ps.hist=[];ps.qi=0;ps.o=0;ps.hint=null;ps.gManual=null;ps.msg='';ps.msgCls='';
+  renderPuzzle();
+}
+function pzGhostToggle(){
+  if(!ps||ps.done||ps.qi>=ps.q.length)return;
+  ps.gManual=!pzGhostOn();renderPuzzle();
+}
+/* 生成した手順(お手本)の qi 手目までを置いた盤面 */
+function pzCanonBoard(n){
+  const b=emptyBoard();
+  for(let j=0;j<n;j++){
+    const h=b.map(a=>a.length);
+    plCells(h,ps.sol[j]).forEach(cl=>{b[cl[0]].push(cl[2]);});
+  }
+  return b;
+}
+function pzNext(){
+  if(ps.qi>=ps.q.length||!pzOnTrack())return null;
+  const h=ps.board.map(a=>a.length);
+  if(ps.sol&&ps.sol[ps.qi]&&sig(pzCanonBoard(ps.qi))===sig(ps.board))return {pl:ps.sol[ps.qi],h};
+  const path=pzFind(ps.req,h,ps.qi,ps.q,{});
+  return path&&path.length?{pl:path[0],h}:null;
+}
+/* 置き方 → 軸の列と子の向き */
+function pzDir(pl,pc){
+  const x=pc[0];
+  if(pl.k==='v')return {o:pl.lo===x?0:2,ac:pl.c};
+  return pl.l===x?{o:1,ac:pl.c}:{o:3,ac:pl.c+1};
+}
+const OFF='ここまでで形からズレているよ。もどすか、やり直してね';
+function pzHint(){
+  if(!ps||ps.done||ps.qi>=ps.q.length)return;
+  const n=pzNext();
+  if(!n){pzBad(OFF);return;}
+  const d=pzDir(n.pl,ps.q[ps.qi]);
+  ps.hints++;
+  ps.hint={cells:plCells(n.h,n.pl).map(cl=>[cl[0],cl[1]]),ac:d.ac};
+  ps.o=d.o;
+  ps.msg='ヒント: 軸(白い縁)を'+(d.ac+1)+'列目へ。もう片方は'+DIRN[d.o]+'(点滅の場所)';
+  ps.msgCls='hint';
+  renderPuzzle();
+}
+function pzStep(){
+  if(!ps||ps.done||ps.qi>=ps.q.length)return;
+  const n=pzNext();
+  if(!n){pzBad(OFF);return;}
+  ps.hist.push({board:clone(ps.board),qi:ps.qi});
+  plCells(n.h,n.pl).forEach(cl=>{ps.board[cl[0]].push(cl[2]);});
+  ps.hints++;ps.qi++;ps.hint=null;ps.gManual=null;ps.msg='お手本どおりに置いたよ';ps.msgCls='hint';ps.o=0;
+  if(ps.qi>=ps.q.length)pzFinish();
+  renderPuzzle();
+}
+function renderQuiz(){
+  const cur=sess.qs[sess.i],q=cur.q;
+  if(cur.chosen===null&&!cur.t0)cur.t0=performance.now();
+  const stepName=['1手目','2手目','3手目'][q.step];
+  const tsumo=q.t.map((p,i)=>
+    '<div class="ts '+(i===q.step?'now':i<q.step?'':'later')+'"><small>'+(i+1)+'手目</small>'+pairHTML(p)+'</div>').join('');
+  const answered=cur.chosen!==null;
+  const ch=q.choices.map((c,i)=>{
+    let cls='choice';
+    if(answered){
+      if(c.ok)cls+=' ok';
+      else if(i===cur.chosen)cls+=' ng';
+      else cls+=' dim';
+    }
+    const tag=answered&&(c.ok||i===cur.chosen)?'<span class="tag">'+(c.ok?'○':'×')+'</span>':'');
+    return '<button class="'+cls+'" data-act="choice" data-i="'+i+'" '+(answered?'disabled':'')+' aria-label="選択肢'+(i+1)+'">'+boardHTML(c.b,'',q.board)+tag+'</button>';
+  }).join('');
+  let fb='',bar='';
+  if(answered){
+    const last=sess.i===sess.qs.length-1;
+    fb='<div class="fb '+(cur.ok?'ok':'ng')+'"><div class="verdict"><span>'+(cur.ok?'正解！':'不正解')+'</span><small>'+(cur.ms/1000).toFixed(1)+'秒</small></div>'+
+      '<p>'+(cur.ok?'' : '正解は ○ の配置。')+q.note+'<br><small style="color:var(--sub)">'+q.legend+'</small></p></div>';
+    bar='<div class="bottombar"><button class="btn" data-act="next">'+(last?'結果を見る':'次の問題')+'</button></div>';
+  }
+  app.innerHTML=
+    '<div class="top"><span>'+(sess.i+1)+' / '+sess.qs.length+(sess.retry?'(やり直し)':'')+'</span><span>正解 '+sess.correct+'</span><button class="quit" data-act="home">やめる</button></div>'+
+    '<div class="bar"><i style="width:'+(sess.i/sess.qs.length*100)+'%"></i></div>'+
+    '<h2>'+stepName+'をどこに置く？<span class="chip">'+TYPES[q.type].name+'</span></h2>'+
+    '<div class="info"><div class="tsumo">'+tsumo+'</div><div><div class="curboard">'+boardHTML(q.board)+'</div></div></div>'+
+    '<p class="cap">半透明のぷよが、これから置く場所</p><div class="choices">'+ch+'</div>'+fb+bar;
+}
+
+function renderResult(){
+  const n=sess.qs.length,c=sess.correct;
+  const total=sess.qs.reduce((a,x)=>a+x.ms,0)/n/1000;
+  const wrong=sess.qs.filter(x=>!x.ok);
+  app.innerHTML=
+    '<h1>結果'+(sess.retry?'(やり直し)':'')+'</h1>'+
+    '<div class="card"><div class="big">'+c+'<small> / '+n+'</small></div>'+
+    '<p class="sub" style="margin:4px 0 0">正答率 '+pct(c,n)+'% ・ 平均 '+total.toFixed(1)+'秒/問</p></div>'+
+    '<div class="stack">'+
+    (wrong.length?'<button class="btn" data-act="retry">間違えた'+wrong.length+'問をやり直す</button>':'')+
+    '<button class="btn '+(wrong.length?'ghost':'')+'" data-act="start">次の'+N+'問</button>'+
+    '<button class="btn ghost" data-act="home">ホームへ</button></div>';
+}
+
+function startSet(){
+  const list=enabledKeys();if(!list.length)return;
+  const qs=[];let prev='';
+  for(let i=0;i<N;i++){
+    let k=pickKey(list),tries=0;
+    while(k===prev&&list.length>1&&tries++<4)k=pickKey(list);
+    prev=k;qs.push(mk(newParams(k)));
+  }
+  sess={qs,i:0,correct:0,retry:false};renderQuiz();window.scrollTo(0,0);
+}
+function startRetry(){
+  const w=sess.qs.filter(x=>!x.ok);
+  sess={qs:w.map(x=>mk(x.params)),i:0,correct:0,retry:true};renderQuiz();window.scrollTo(0,0);
+}
+function answer(i){
+  const cur=sess.qs[sess.i];
+  if(cur.chosen!==null)return;
+  cur.ms=performance.now()-cur.t0;
+  cur.chosen=i;cur.ok=!!cur.q.choices[i].ok;
+  if(cur.ok)sess.correct++;
+  record(cur.params.key,cur.ok,cur.ms);
+  renderQuiz();
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(()=>{
+    const fb=document.querySelector('.fb');if(!fb)return;
+    const gap=16,barH=84; /* 下の固定ボタン分 */
+    const over=fb.getBoundingClientRect().bottom-(window.innerHeight-barH-gap);
+    if(over>0)window.scrollBy({top:over,behavior:reduce?'auto':'smooth'});
+  });
+}
+function next(){
+  if(sess.i<sess.qs.length-1){sess.i++;renderQuiz();window.scrollTo(0,0);} 
+  else{
+    if(!sess.retry){
+      const n=sess.qs.length;
+      store.hist.push({t:Date.now(),c:sess.correct,n,avg:sess.qs.reduce((a,x)=>a+x.ms,0)/n/1000});
+      if(store.hist.length>50)store.hist=store.hist.slice(-50);
+      save();
+    }
+    renderResult();window.scrollTo(0,0);
+  }
+}
+app.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act;
+  if(a==='start')startSet();
+  else if(a==='choice')answer(+b.dataset.i);
+  else if(a==='next')next();
+  else if(a==='retry')startRetry();
+  else if(a==='home'){sess=null;ps=null;renderHome();window.scrollTo(0,0);}
+  else if(a==='tab'){store.tab=b.dataset.v;save();renderHome();window.scrollTo(0,0);} 
+  else if(a==='pstart')startPuzzle();
+  else if(a==='pcol')pzPlace(+b.dataset.c);
+  else if(a==='rotl')pzRot(-1);
+  else if(a==='rotr')pzRot(1);
+  else if(a==='undo')pzUndo();
+  else if(a==='pretry')pzRetry();
+  else if(a==='gtog')pzGhostToggle();
+  else if(a==='hint')pzHint();
+  else if(a==='step')pzStep();
+  else if(a==='preset'){if(confirm('組み立ての記録を消します。よろしいですか？')){store.pz={};save();renderHome();}}
+  else if(a==='reset'){if(confirm('学習記録をすべて消します。よろしいですか？')){store.keys={};store.hist=[];save();renderHome();}}
+});
+app.addEventListener('change',e=>{
+  const el=e.target;if(!el||!el.name||sess||ps)return;
+  const y=window.scrollY;
+  if(el.name==='mode')store.set.mode=el.value;
+  else if(el.name==='steps')store.set.steps=el.value;
+  else if(el.name==='type'){
+    const on=Array.prototype.slice.call(app.querySelectorAll('input[name=type]:checked')).map(x=>x.value);
+    store.set.types=on;
+  }
+  else if(el.name==='pmode')store.pset.mode=el.value;
+  else if(el.name==='pghost')store.pset.ghost=el.value;
+  else if(el.name==='pn')store.pset.n=+el.value;
+  else if(el.name==='pform'){
+    store.pset.forms=Array.prototype.slice.call(app.querySelectorAll('input[name=pform]:checked')).map(x=>x.value);
+  }else return;
+  save();renderHome();window.scrollTo(0,y);
+});
+renderHome();
+</script>
+</body>
+</html>
